@@ -1,0 +1,6 @@
+{
+  "name": "StethoConnect",
+  "description": "The ultimate campus social network to connect with your college mates, share campus life, memes, confessions, and study updates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

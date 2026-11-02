@@ -1,0 +1,227 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Student / Alumni profile for college campus social network",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of profile / auth UID",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the college student or alumnus",
+          "maxLength": 100
+        },
+        "handle": {
+          "type": "string",
+          "description": "Unique username handle",
+          "maxLength": 30
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short campus bio or academic interests",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of profile creation",
+          "maxLength": 50
+        },
+        "college": {
+          "type": "string",
+          "description": "College or institute name (e.g. MGM Indore)",
+          "maxLength": 150
+        },
+        "specialty": {
+          "type": "string",
+          "description": "Course or batch year (e.g. 1st Year Student)",
+          "maxLength": 100
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Avatar image URL",
+          "maxLength": 500
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the authenticated student",
+          "maxLength": 100
+        }
+      },
+      "required": ["id", "name", "handle", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Campus post, meme, confession, or study update",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique post ID",
+          "maxLength": 128
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Author student ID",
+          "maxLength": 128
+        },
+        "college": {
+          "type": "string",
+          "description": "College name for filtering and identification",
+          "maxLength": 150
+        },
+        "text": {
+          "type": "string",
+          "description": "Content of the post",
+          "maxLength": 3000
+        },
+        "images": {
+          "type": "array",
+          "description": "List of post image URLs or data"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of post creation",
+          "maxLength": 50
+        },
+        "reactions": {
+          "type": "object",
+          "description": "Map of user reactions ('like')"
+        },
+        "viewers": {
+          "type": "array",
+          "description": "List of student IDs who viewed the post"
+        }
+      },
+      "required": ["id", "authorId", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Comment or reply on a post",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique comment ID",
+          "maxLength": 128
+        },
+        "postId": {
+          "type": "string",
+          "description": "Parent post ID",
+          "maxLength": 128
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Author student ID",
+          "maxLength": 128
+        },
+        "parentId": {
+          "type": "string",
+          "description": "Parent comment ID for nested replies or null",
+          "maxLength": 128
+        },
+        "text": {
+          "type": "string",
+          "description": "Text of the comment",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of comment creation",
+          "maxLength": 50
+        },
+        "likes": {
+          "type": "array",
+          "description": "Student IDs who liked this comment"
+        }
+      },
+      "required": ["id", "postId", "authorId", "text", "createdAt"]
+    },
+    "Follow": {
+      "title": "Follow",
+      "description": "Peer follower relationship",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique follow relationship ID",
+          "maxLength": 128
+        },
+        "followerId": {
+          "type": "string",
+          "description": "User ID of follower",
+          "maxLength": 128
+        },
+        "followeeId": {
+          "type": "string",
+          "description": "User ID of followed student",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of follow",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "followerId", "followeeId"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Report on inappropriate or spam campus post",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique report ID",
+          "maxLength": 128
+        },
+        "postId": {
+          "type": "string",
+          "description": "Target post ID",
+          "maxLength": 128
+        },
+        "reporterId": {
+          "type": "string",
+          "description": "User ID reporting the post",
+          "maxLength": 128
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for report",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of report",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "postId", "reporterId", "reason", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Public student and alumni profiles"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Campus posts, memes, and updates"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments and replies on posts"
+    },
+    "/follows/{followId}": {
+      "schema": "Follow",
+      "description": "Peer follower connections"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Content moderation reports"
+    }
+  }
+}

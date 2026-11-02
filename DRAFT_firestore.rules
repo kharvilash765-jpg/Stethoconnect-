@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Profiles validation
+    function isValidProfile(data, uid) {
+      return data.keys().hasAll(['id', 'name', 'handle', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'name', 'handle', 'bio', 'createdAt', 'avatar', 'specialty']) &&
+        data.id == uid &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.handle is string && data.handle.size() >= 3 && data.handle.size() <= 30 &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+        data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(profileId) && profileId == request.auth.uid && isValidProfile(incoming(), request.auth.uid);
+      allow update: if isSignedIn() && isValidId(profileId) && profileId == request.auth.uid &&
+        incoming().id == existing().id &&
+        incoming().handle == existing().handle &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'bio', 'avatar', 'specialty']) &&
+        isValidProfile(incoming(), request.auth.uid);
+      allow delete: if false;
+    }
+
+    // Posts validation
+    function isValidPost(data) {
+      return data.keys().hasAll(['id', 'authorId', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'authorId', 'text', 'images', 'createdAt', 'reactions', 'viewers']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.authorId is string && data.authorId.size() <= 128 &&
+        (!('text' in data) || (data.text is string && data.text.size() <= 3000)) &&
+        (!('images' in data) || (data.images is list && data.images.size() <= 5)) &&
+        data.createdAt is string && data.createdAt.size() <= 50 &&
+        (!('reactions' in data) || data.reactions is map) &&
+        (!('viewers' in data) || (data.viewers is list && data.viewers.size() <= 5000));
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(postId) &&
+        incoming().authorId == request.auth.uid &&
+        isValidPost(incoming());
+      
+      // Update by author (editing content) OR by viewers/reactions
+      allow update: if isSignedIn() && isValidId(postId) && isValidPost(incoming()) && (
+        // Author edit: author cannot change id, authorId, createdAt
+        (incoming().authorId == request.auth.uid &&
+         existing().authorId == request.auth.uid &&
+         incoming().id == existing().id &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['text', 'images'])) ||
+        // Community interaction: reacting or adding view count
+        (incoming().authorId == existing().authorId &&
+         incoming().id == existing().id &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'viewers']))
+      );
+
+      allow delete: if isSignedIn() && isValidId(postId) && existing().authorId == request.auth.uid;
+    }
+
+    // Comments validation
+    function isValidComment(data) {
+      return data.keys().hasAll(['id', 'postId', 'authorId', 'text', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'postId', 'authorId', 'parentId', 'text', 'createdAt', 'likes']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.postId is string && data.postId.size() <= 128 &&
+        data.authorId is string && data.authorId.size() <= 128 &&
+        data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
+        data.createdAt is string && data.createdAt.size() <= 50 &&
+        (!('likes' in data) || (data.likes is list && data.likes.size() <= 5000));
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(commentId) &&
+        incoming().authorId == request.auth.uid &&
+        isValidComment(incoming());
+      allow update: if isSignedIn() && isValidId(commentId) && isValidComment(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().postId == existing().postId &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['likes']);
+      allow delete: if isSignedIn() && isValidId(commentId) && existing().authorId == request.auth.uid;
+    }
+
+    // Follows validation
+    function isValidFollow(data) {
+      return data.keys().hasAll(['id', 'followerId', 'followeeId']) &&
+        data.keys().hasOnly(['id', 'followerId', 'followeeId', 'createdAt']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.followerId is string && data.followerId.size() <= 128 &&
+        data.followeeId is string && data.followeeId.size() <= 128 &&
+        data.followerId != data.followeeId;
+    }
+
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(followId) &&
+        incoming().followerId == request.auth.uid &&
+        isValidFollow(incoming());
+      allow delete: if isSignedIn() && isValidId(followId) &&
+        existing().followerId == request.auth.uid;
+    }
+
+    // Reports validation
+    function isValidReport(data) {
+      return data.keys().hasAll(['id', 'postId', 'reporterId', 'reason', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'postId', 'reporterId', 'reason', 'createdAt']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.postId is string && data.postId.size() <= 128 &&
+        data.reporterId is string && data.reporterId.size() <= 128 &&
+        data.reason is string && data.reason.size() <= 50 &&
+        data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isSignedIn() && (resource == null || existing().reporterId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(reportId) &&
+        incoming().reporterId == request.auth.uid &&
+        isValidReport(incoming());
+      allow update, delete: if false;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read: if true;
+    }
+  }
+}
